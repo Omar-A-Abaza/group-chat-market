@@ -1,0 +1,40 @@
+{% extends "base.html" %}{% block content %}
+<h1>{{ m.question }}</h1>
+{% if m.status == 'resolved' %}<p class="flash ok">Resolved — winner: {{ (m.outcomes|selectattr('id','equalto',m.winning_outcome_id)|first).label }}</p>{% endif %}
+{% if current_user.is_authenticated and m.subject_id == current_user.id %}<p class="muted">This is your own market — you can't bet on it.</p>{% endif %}
+<div class="card">
+{% for o in m.outcomes %}
+  <div class="bar {{ 'dead' if o.eliminated }}"><span style="width: {{ pm[o.id]*100 }}%"></span>
+    <b>{{ o.label }}{% if o.eliminated %} (eliminated){% endif %}</b><i>{{ pm[o.id]|pct }}</i></div>
+  {% if o.id in mine and mine[o.id].shares > 0 %}<div class="muted small">You hold {{ '%.2f'|format(mine[o.id].shares) }} shares</div>{% endif %}
+{% endfor %}
+</div>
+{% if not current_user.is_authenticated and m.status == 'open' %}
+<div class="card"><a href="{{ url_for('auth.login', next=request.path) }}"><button type="button">Log in to bet</button></a></div>
+{% elif can_bet %}
+<div class="grid">
+<form method="post" action="{{ url_for('views.buy', mid=m.id) }}" class="card" data-trade="buy" data-market="{{ m.id }}">
+  <h3>Buy</h3><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <select name="outcome">{% for o in m.live_outcomes() %}<option value="{{ o.id }}">{{ o.label }} ({{ pm[o.id]|pct }})</option>{% endfor %}</select>
+  <input name="dollars" type="number" step="0.01" min="0.01" placeholder="$ amount" required>
+  <div class="preview muted small"></div><button>Buy</button>
+</form>
+<form method="post" action="{{ url_for('views.sell', mid=m.id) }}" class="card" data-trade="sell" data-market="{{ m.id }}">
+  <h3>Sell</h3><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <select name="outcome">{% for o in m.live_outcomes() %}{% if o.id in mine and mine[o.id].shares > 0 %}<option value="{{ o.id }}">{{ o.label }} ({{ '%.2f'|format(mine[o.id].shares) }} sh)</option>{% endif %}{% endfor %}</select>
+  <input name="shares" type="text" placeholder="shares (blank = all)">
+  <div class="preview muted small"></div><button>Sell</button>
+</form>
+</div>
+{% endif %}
+<h2>Odds over time</h2>
+<div class="card chart"><canvas id="market-chart" data-url="{{ url_for('views.history', mid=m.id) }}"></canvas></div>
+<h2>Holders</h2>
+<div class="card">{% for o in m.outcomes if o.id in holders %}
+  <p><b>{{ o.label }}</b>: {% for p in holders[o.id] %}{{ p.user.display_name }} ({{ '%.1f'|format(p.shares) }}){{ ', ' if not loop.last }}{% endfor %}</p>
+{% else %}<p class="muted">No positions yet.</p>{% endfor %}</div>
+<h2>Recent trades</h2>
+<div class="card">{% for t in trades %}
+  <p class="small">{{ t.created_at.strftime('%b %d %H:%M') }} · {{ t.user.display_name }} {{ t.kind }} {{ '%.2f'|format(t.shares) }} × {{ t.outcome.label }} for {{ t.dollars|money }}</p>
+{% else %}<p class="muted">No trades yet.</p>{% endfor %}</div>
+{% endblock %}

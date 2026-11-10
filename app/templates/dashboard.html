@@ -1,0 +1,16 @@
+{% extends "base.html" %}{% block content %}
+<h1>Markets</h1>
+<div class="grid">
+{% for c in cards %}
+  <a class="card" href="{{ url_for('views.market', mid=c.market.id) }}">
+    <h3>{{ c.market.question }}</h3>
+    {% if c.market.status == 'resolved' %}<p class="ok">Resolved: {{ c.winner.label }}</p>
+    {% else %}{% for o, p in c.top %}
+    <div class="bar"><span style="width: {{ p*100 }}%"></span><b>{{ o.label }}</b><i>{{ p|pct }}</i></div>
+    {% endfor %}{% endif %}
+  </a>
+{% endfor %}
+</div>
+<h2>Top of the leaderboard</h2>
+<ol class="board">{% for u, v in board %}<li><a href="{{ url_for('views.profile', uid=u.id) }}">{{ u.display_name }}</a> <span>{{ v|money }}</span></li>{% endfor %}</ol>
+{% endblock %}

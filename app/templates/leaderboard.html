@@ -1,0 +1,7 @@
+{% extends "base.html" %}{% block content %}
+<h1>Leaderboard</h1>
+<div class="card chart"><canvas id="lb-bar" data-url="{{ url_for('views.leaderboard_api') }}"></canvas></div>
+<ol class="board">{% for u, v in board %}<li><a href="{{ url_for('views.profile', uid=u.id) }}">{{ u.display_name }}</a> <span>{{ v|money }}</span></li>{% endfor %}</ol>
+<h2>Net worth over time</h2>
+<div class="card chart"><canvas id="lb-line" data-url="{{ url_for('views.leaderboard_api') }}"></canvas></div>
+{% endblock %}

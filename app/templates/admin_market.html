@@ -1,0 +1,27 @@
+{% extends "base.html" %}{% block content %}
+<h1>Admin: {{ m.question }}</h1><p><a href="{{ url_for('views.market', mid=m.id) }}">View market</a> · status: {{ m.status }}</p>
+<h2>Windows</h2>
+<div class="card">{% for o in m.outcomes %}
+<form method="post" action="{{ url_for('admin.eliminate', oid=o.id) }}" class="row">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <span>{{ o.label }} — {{ pm[o.id]|pct }}{% if o.eliminated %} (eliminated){% endif %}</span>
+  {% if not o.eliminated and m.status == 'open' %}<button>Eliminate</button>{% endif %}
+</form>{% endfor %}</div>
+{% if m.status == 'open' %}
+<h2>Resolve (wedding happened)</h2>
+<form method="post" action="{{ url_for('admin.resolve', mid=m.id) }}" class="card">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <select name="outcome">{% for o in m.live_outcomes() %}<option value="{{ o.id }}">{{ o.label }}</option>{% endfor %}</select>
+  <button>Resolve &amp; pay out</button>
+</form>
+<h2>Windows, starting odds &amp; b</h2>
+{% if has_trades %}<p class="muted">Locked: trading has started.</p>{% else %}
+<form method="post" action="{{ url_for('admin.configure', mid=m.id) }}" class="card">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <label>Liquidity b <input name="b" type="number" step="any" value="{{ m.b }}"></label>
+  <label>One window per line; optional "| percent" for starting odds</label>
+  <textarea name="windows" rows="12">{% for o in m.outcomes %}{{ o.label }}
+{% endfor %}</textarea>
+  <button>Save</button>
+</form>{% endif %}{% endif %}
+{% endblock %}

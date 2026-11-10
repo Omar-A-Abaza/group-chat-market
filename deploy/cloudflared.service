@@ -1,0 +1,12 @@
+[Unit]
+Description=Cloudflare quick tunnel for Group Chat Market
+After=network-online.target group-chat-market.service
+Wants=network-online.target
+
+[Service]
+ExecStart=%h/.local/bin/cloudflared tunnel --no-autoupdate --url http://127.0.0.1:8000
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target

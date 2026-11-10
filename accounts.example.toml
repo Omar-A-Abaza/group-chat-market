@@ -1,0 +1,18 @@
+# Example accounts (fake names). Copy to accounts.local.toml (git-ignored) and put in the real friends.
+# One market "When will <display_name> get married?" is created per user.
+[[users]]
+username = "alice"
+display_name = "Alice"
+is_admin = true
+
+[[users]]
+username = "bob"
+display_name = "Bob"
+
+[[users]]
+username = "carol"
+display_name = "Carol"
+
+[[users]]
+username = "dave"
+display_name = "Dave"

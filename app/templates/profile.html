@@ -1,0 +1,14 @@
+{% extends "base.html" %}{% block content %}
+<h1>{{ u.display_name }}</h1>
+<p>Cash {{ u.cash|money }} · Net worth <b>{{ worth|money }}</b></p>
+{% if u.id == current_user.id %}<p><a href="{{ url_for('auth.change_password') }}">Change password</a></p>{% endif %}
+<h2>Positions</h2>
+<div class="card">{% for r in rows %}
+  <p>{{ r.outcome.market.question }} — <b>{{ r.outcome.label }}</b>: {{ '%.2f'|format(r.pos.shares) }} sh · value {{ r.value|money }} ·
+  <span class="{{ 'ok' if r.pnl >= 0 else 'bad' }}">{{ '%+.2f'|format(r.pnl) }}</span></p>
+{% else %}<p class="muted">No positions.</p>{% endfor %}</div>
+<h2>Trade history</h2>
+<div class="card">{% for t in trades %}
+  <p class="small">{{ t.created_at.strftime('%b %d %H:%M') }} · {{ t.kind }} {{ '%.2f'|format(t.shares) }} × {{ t.outcome.label }} ({{ t.market.question }}) for {{ t.dollars|money }}</p>
+{% else %}<p class="muted">No trades.</p>{% endfor %}</div>
+{% endblock %}

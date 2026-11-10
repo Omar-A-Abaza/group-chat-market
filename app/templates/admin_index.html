@@ -1,0 +1,11 @@
+{% extends "base.html" %}{% block content %}
+<h1>Admin</h1>
+<h2>Markets</h2>
+<ul>{% for m in markets %}<li><a href="{{ url_for('admin.market', mid=m.id) }}">{{ m.question }}</a> ({{ m.status }})</li>{% endfor %}</ul>
+<h2>Reset password</h2>
+{% for u in users %}
+<form method="post" action="{{ url_for('admin.reset_password', uid=u.id) }}" class="row">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <span>{{ u.username }}</span><input name="password" placeholder="new password" required minlength="6"><button>Reset</button>
+</form>{% endfor %}
+{% endblock %}
