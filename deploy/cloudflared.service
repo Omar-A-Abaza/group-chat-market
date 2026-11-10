@@ -4,7 +4,7 @@ After=network-online.target group-chat-market.service
 Wants=network-online.target
 
 [Service]
-ExecStart=%h/.local/bin/cloudflared tunnel --no-autoupdate --url http://127.0.0.1:8000
+ExecStart=%h/.local/bin/cloudflared tunnel --no-autoupdate --logfile %h/.cache/cloudflared.log --url http://127.0.0.1:8000
 Restart=on-failure
 RestartSec=5
 
