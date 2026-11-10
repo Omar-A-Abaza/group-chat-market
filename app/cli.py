@@ -59,6 +59,15 @@ def register(app):
         else:
             click.echo("No new users.")
 
+    @app.cli.command("check-windows")
+    def check_windows():
+        """Eliminate windows whose end date has passed (also runs hourly inside the server)."""
+        from . import trading
+        done = trading.auto_eliminate_expired()
+        for q, label in done:
+            click.echo(f"eliminated {label} in {q}")
+        click.echo(f"{len(done)} window(s) eliminated.")
+
     @app.cli.command("reset-password")
     @click.argument("username")
     def reset_password(username):

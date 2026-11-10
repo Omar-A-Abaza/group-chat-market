@@ -1,6 +1,7 @@
 """Trading operations. All run under a global lock and commit their own transaction."""
 import json
 import threading
+from datetime import date
 
 from . import market_math as mm
 from .models import (Market, NetWorthSnapshot, Outcome, Position, PriceSnapshot, Trade, User,
@@ -186,3 +187,31 @@ def resolve(market_id, outcome_id):
         except Exception:
             db.session.rollback()
             raise
+
+
+def auto_eliminate_expired(today=None):
+    """Eliminate every live window whose end date is before `today`, in all open markets.
+
+    Holders of an expired window lose those shares (they become worthless); everyone else's
+    prices rescale to 100%. The last live window of a market is never eliminated.
+    Returns a list of (market question, window label).
+    """
+    today = today or date.today()
+    done = []
+    with LOCK:
+        try:
+            for market in Market.query.filter_by(status="open").all():
+                changed = False
+                for o in sorted(market.live_outcomes(), key=lambda o: o.ends_on or date.max):
+                    if o.ends_on and o.ends_on < today and len(market.live_outcomes()) > 1:
+                        o.eliminated = True
+                        db.session.flush()
+                        done.append((market.question, o.label))
+                        changed = True
+                if changed:
+                    _snapshot(market)
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+            raise
+    return done

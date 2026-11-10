@@ -1,11 +1,25 @@
 import json
-from datetime import datetime, timezone
+import re
+from datetime import date, datetime, timedelta, timezone
 
 from flask_login import UserMixin
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import check_password_hash, generate_password_hash
 
 db = SQLAlchemy()
+
+
+def parse_window_end(label):
+    """Last day of a window label: 'Before 2027' -> 2026-12-31, '2027 Q2' -> 2027-06-30. Else None."""
+    m = re.fullmatch(r"\s*Before (\d{4})\s*", label)
+    if m:
+        return date(int(m.group(1)) - 1, 12, 31)
+    m = re.fullmatch(r"\s*(\d{4}) Q([1-4])\s*", label)
+    if m:
+        y, q = int(m.group(1)), int(m.group(2))
+        first_next = date(y + (q == 4), 1 if q == 4 else q * 3 + 1, 1)
+        return first_next - timedelta(days=1)
+    return None
 
 
 def now():
@@ -61,7 +75,13 @@ class Outcome(db.Model):
     sort_order = db.Column(db.Integer, default=0, nullable=False)
     q = db.Column(db.Float, default=0.0, nullable=False)
     eliminated = db.Column(db.Boolean, default=False, nullable=False)
+    ends_on = db.Column(db.Date)  # last day of the window; None = open-ended (never auto-eliminated)
     market = db.relationship("Market", back_populates="outcomes")
+
+    def __init__(self, **kw):
+        if "ends_on" not in kw and kw.get("label"):
+            kw["ends_on"] = parse_window_end(kw["label"])
+        super().__init__(**kw)
 
 
 class Position(db.Model):

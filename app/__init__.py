@@ -57,4 +57,37 @@ def create_app(test_config=None):
 
     with app.app_context():
         db.create_all()
+        _migrate()
     return app
+
+
+def _migrate():
+    """Add Outcome.ends_on to databases created before it existed, and backfill it from labels."""
+    from sqlalchemy import text
+    from .models import Outcome, parse_window_end
+    cols = [r[1] for r in db.session.execute(text("PRAGMA table_info(outcome)"))]
+    if "ends_on" not in cols:
+        db.session.execute(text("ALTER TABLE outcome ADD COLUMN ends_on DATE"))
+        db.session.commit()
+        for o in Outcome.query.all():
+            o.ends_on = parse_window_end(o.label)
+        db.session.commit()
+
+
+def start_scheduler(app, interval_seconds=3600):
+    """Background thread: eliminate expired windows now and then every hour."""
+    import threading
+    import time
+
+    def loop():
+        while True:
+            try:
+                with app.app_context():
+                    from . import trading
+                    for q, label in trading.auto_eliminate_expired():
+                        app.logger.info("Auto-eliminated %s in %s", label, q)
+            except Exception:
+                app.logger.exception("window check failed")
+            time.sleep(interval_seconds)
+
+    threading.Thread(target=loop, name="window-checker", daemon=True).start()

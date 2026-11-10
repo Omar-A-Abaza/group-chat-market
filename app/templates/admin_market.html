@@ -4,7 +4,7 @@
 <div class="card">{% for o in m.outcomes %}
 <form method="post" action="{{ url_for('admin.eliminate', oid=o.id) }}" class="row">
   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-  <span>{{ o.label }} — {{ pm[o.id]|pct }}{% if o.eliminated %} (eliminated){% endif %}</span>
+  <span>{{ o.label }}{% if o.ends_on %} (auto-eliminates after {{ o.ends_on }}){% endif %} — {{ pm[o.id]|pct }}{% if o.eliminated %} (eliminated){% endif %}</span>
   {% if not o.eliminated and m.status == 'open' %}<button>Eliminate</button>{% endif %}
 </form>{% endfor %}</div>
 {% if m.status == 'open' %}
