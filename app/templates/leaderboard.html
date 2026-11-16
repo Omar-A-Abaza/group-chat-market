@@ -1,7 +1,17 @@
-{% extends "base.html" %}{% block content %}
-<h1>Leaderboard</h1>
-<div class="card chart"><canvas id="lb-bar" data-url="{{ url_for('views.leaderboard_api') }}"></canvas></div>
-<ol class="board">{% for u, v in board %}<li><a href="{{ url_for('views.profile', uid=u.id) }}">{{ u.display_name }}</a> <span>{{ v|money }}</span></li>{% endfor %}</ol>
-<h2>Net worth over time</h2>
-<div class="card chart"><canvas id="lb-line" data-url="{{ url_for('views.leaderboard_api') }}"></canvas></div>
+{% from "_macros.html" import avatar %}
+{% extends "base.html" %}{% block title %}Leaderboard · {{ group_name }}{% endblock %}{% block content %}
+<div class="page-head"><h1>Leaderboard</h1></div>
+<p class="muted small">Net worth = cash + the current value of every open position.</p>
+<div class="layout">
+<section class="card">
+  <ol class="board big">
+  {% for u, v in board %}
+    <li><span class="rank r{{ loop.index }}">{{ loop.index }}</span>{{ avatar(u, 34) }}
+      <a href="{{ url_for('views.profile', uid=u.id) }}">{{ u.display_name }}</a>
+      <span class="val">{{ v|money }}<small class="{{ 'up' if v >= config.START_CASH else 'down' }}">{{ '%+.0f'|format(v - config.START_CASH) }}</small></span></li>
+  {% endfor %}
+  </ol>
+</section>
+<aside class="card"><h3>Net worth over time</h3><div id="lb-chart" data-url="{{ url_for('views.leaderboard_api') }}"></div></aside>
+</div>
 {% endblock %}

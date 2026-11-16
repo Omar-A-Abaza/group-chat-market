@@ -1,0 +1,14 @@
+{% extends "base.html" %}{% block title %}Join · {{ group_name }}{% endblock %}{% block content %}
+{% if invalid %}
+<div class="empty"><h1>This invite link isn't valid</h1><p class="muted">It may have expired, been used up, or been revoked. Ask for a new one.</p></div>
+{% else %}
+<form method="post" class="card form narrow">
+  <h1>Join {{ group_name }}</h1>
+  <p class="muted">You'll start with {{ config.START_CASH|money }} of play money.</p>
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <label>Your name <input name="display_name" maxlength="40" required autofocus></label>
+  <label>Username <input name="username" autocapitalize="none" pattern="[A-Za-z0-9_]{3,20}" required><span class="hint">3-20 letters, numbers or _</span></label>
+  <label>Password <input name="password" type="password" minlength="8" autocomplete="new-password" required><span class="hint">At least 8 characters</span></label>
+  <button class="btn primary block">Create account</button>
+</form>
+{% endif %}{% endblock %}

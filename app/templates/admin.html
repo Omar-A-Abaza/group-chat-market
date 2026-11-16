@@ -1,0 +1,40 @@
+{% from "_macros.html" import avatar, badge %}
+{% extends "base.html" %}{% block title %}Admin · {{ group_name }}{% endblock %}{% block content %}
+<div class="page-head"><h1>Admin</h1></div>
+
+<section class="card form">
+  <h3>Invite friends</h3>
+  <p class="muted small">Make a link and share it in your group chat. Anyone who opens it can create an account.</p>
+  <form method="post" action="{{ url_for('admin.create_invite') }}" class="row2">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label>Expires in (days) <input name="days" type="number" min="0" placeholder="never"></label>
+    <label>Max sign-ups <input name="max_uses" type="number" min="0" placeholder="unlimited"></label>
+    <button class="btn primary">Create link</button>
+  </form>
+  {% for i in invites %}
+  <div class="invite {{ 'dead' if not i.is_valid(now) }}">
+    <code>{{ links[i.id] }}</code>
+    <span class="muted small">{{ i.uses }}{% if i.max_uses %}/{{ i.max_uses }}{% endif %} used{% if i.expires_at %} · expires <time data-utc="{{ i.expires_at|utc }}">{{ i.expires_at.strftime('%b %d') }}</time>{% endif %}{% if i.revoked %} · revoked{% elif not i.is_valid(now) %} · inactive{% endif %}</span>
+    {% if i.is_valid(now) %}
+    <button type="button" class="btn small" data-copy="{{ links[i.id] }}">Copy</button>
+    <form method="post" action="{{ url_for('admin.revoke_invite', iid=i.id) }}" class="inline"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn small danger">Revoke</button></form>
+    {% endif %}
+  </div>{% endfor %}
+</section>
+
+<section class="card form">
+  <h3>People ({{ users|length }})</h3>
+  {% for u in users %}
+  <form method="post" action="{{ url_for('admin.reset_password', uid=u.id) }}" class="row">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    {{ avatar(u, 28) }}<span>{{ u.display_name }} <span class="muted small">@{{ u.username }}{% if u.is_admin %} · admin{% endif %}</span></span>
+    <input name="password" type="password" placeholder="new password" minlength="8" autocomplete="new-password"><button class="btn small">Reset</button>
+  </form>{% endfor %}
+</section>
+
+<section class="card">
+  <h3>All markets</h3>
+  {% for m in markets %}<p class="row"><a href="{{ url_for('views.manage', mid=m.id) }}">{{ m.title }}</a>{{ badge(m) }}</p>
+  {% else %}<p class="muted">None yet.</p>{% endfor %}
+</section>
+{% endblock %}

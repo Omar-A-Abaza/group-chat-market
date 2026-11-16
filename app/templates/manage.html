@@ -1,0 +1,55 @@
+{% from "_macros.html" import badge %}
+{% extends "base.html" %}{% block title %}Manage · {{ m.title }}{% endblock %}{% block content %}
+<p><a href="{{ url_for('views.market', mid=m.id) }}">← Back to market</a></p>
+<div class="page-head"><h1>Manage: {{ m.title }}</h1>{{ badge(m) }}</div>
+
+{% if m.is_active %}
+<section class="card form">
+  <h3>Resolve</h3>
+  <p class="muted small">Pick what actually happened. Each share of the winning option pays $1; everything else pays nothing.</p>
+  <form method="post" action="{{ url_for('views.resolve', mid=m.id) }}" data-confirm="Resolve this market? This pays out and can't be undone.">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <select name="outcome">{% for o in m.live_outcomes() %}<option value="{{ o.id }}">{{ o.label }} ({{ pm[o.id]|pct }})</option>{% endfor %}</select>
+    <input name="note" maxlength="500" placeholder="Note for everyone (optional)">
+    <button class="btn primary block">Resolve &amp; pay out</button>
+  </form>
+</section>
+
+<section class="card form">
+  <h3>Options</h3>
+  {% for o in m.outcomes %}
+  <form method="post" action="{{ url_for('views.eliminate', mid=m.id, oid=o.id) }}" class="row" data-confirm="Eliminate this option? Holders lose their shares.">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <span>{{ o.label }}{% if o.ends_on %} <span class="muted small">(auto-expires after {{ o.ends_on }})</span>{% endif %}{% if o.eliminated %} <span class="muted small">eliminated</span>{% endif %}</span>
+    <span class="muted">{{ pm[o.id]|pct }}</span>
+    {% if not o.eliminated and m.live_outcomes()|length > 2 %}<button class="btn small">Eliminate</button>{% endif %}
+  </form>{% endfor %}
+</section>
+
+{% if not has_trades and m.kind != 'yes_no' and m.status == 'open' %}
+<section class="card form">
+  <h3>Edit options</h3>
+  <p class="muted small">Only possible before anyone has traded.</p>
+  <form method="post" action="{{ url_for('views.configure', mid=m.id) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label>Liquidity <input name="b" type="number" step="any" value="{{ m.b }}"></label>
+    <label>One option per line (optional "| percent")<textarea name="options" rows="8">{% for o in m.outcomes %}{{ o.label }}
+{% endfor %}</textarea></label>
+    <button class="btn block">Save options</button>
+  </form>
+</section>
+{% endif %}
+
+<section class="card form">
+  <h3>Cancel market</h3>
+  <p class="muted small">Voids the market and refunds everyone exactly what they spent (buys minus sells).</p>
+  <form method="post" action="{{ url_for('views.void', mid=m.id) }}" data-confirm="Cancel this market and refund everyone?">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input name="note" maxlength="500" placeholder="Reason (optional)">
+    <button class="btn danger block">Cancel &amp; refund</button>
+  </form>
+</section>
+{% else %}
+<div class="card empty"><p>This market is finished, so there's nothing left to manage.</p></div>
+{% endif %}
+{% endblock %}

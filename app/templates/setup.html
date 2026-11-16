@@ -1,0 +1,10 @@
+{% extends "base.html" %}{% block title %}Set up · {{ group_name }}{% endblock %}{% block content %}
+<form method="post" class="card form narrow">
+  <h1>Welcome</h1>
+  <p class="muted">Create the admin account for <b>{{ group_name }}</b>. You can invite friends afterwards.</p>
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <label>Your name <input name="display_name" maxlength="40" required autofocus></label>
+  <label>Username <input name="username" autocapitalize="none" pattern="[A-Za-z0-9_]{3,20}" required><span class="hint">3-20 letters, numbers or _</span></label>
+  <label>Password <input name="password" type="password" minlength="8" autocomplete="new-password" required><span class="hint">At least 8 characters</span></label>
+  <button class="btn primary block">Create group</button>
+</form>{% endblock %}

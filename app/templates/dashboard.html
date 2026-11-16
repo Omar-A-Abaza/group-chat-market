@@ -1,16 +1,47 @@
+{% from "_macros.html" import avatar, badge, when %}
 {% extends "base.html" %}{% block content %}
-<h1>Markets</h1>
-<div class="grid">
-{% for c in cards %}
-  <a class="card" href="{{ url_for('views.market', mid=c.market.id) }}">
-    <h3>{{ c.market.question }}</h3>
-    {% if c.market.status == 'resolved' %}<p class="ok">Resolved: {{ c.winner.label }}</p>
-    {% else %}{% for o, p in c.top %}
-    <div class="bar"><span style="width: {{ p*100 }}%"></span><b>{{ o.label }}</b><i>{{ p|pct }}</i></div>
-    {% endfor %}{% endif %}
-  </a>
-{% endfor %}
+<div class="page-head">
+  <h1>Markets</h1>
+  {% if current_user.is_authenticated %}<a class="btn primary" href="{{ url_for('views.new_market') }}">＋ New market</a>{% endif %}
 </div>
-<h2>Top of the leaderboard</h2>
-<ol class="board">{% for u, v in board %}<li><a href="{{ url_for('views.profile', uid=u.id) }}">{{ u.display_name }}</a> <span>{{ v|money }}</span></li>{% endfor %}</ol>
+<form class="toolbar" method="get">
+  <input type="search" name="q" value="{{ q }}" placeholder="Search markets…" aria-label="Search markets">
+  <div class="chips" role="group" aria-label="Filter">
+    {% for key, label in [('open','Open'),('soon','Closing soon'),('done','Finished'),('all','All')] %}
+    <button name="filter" value="{{ key }}" class="chip {{ 'on' if flt == key }}">{{ label }}</button>{% endfor %}
+  </div>
+  <select name="sort" onchange="this.form.submit()" aria-label="Sort">
+    {% for key, label in [('new','Newest'),('volume','Most traded'),('closing','Closing soon')] %}
+    <option value="{{ key }}" {{ 'selected' if sort == key }}>{{ label }}</option>{% endfor %}
+  </select>
+</form>
+<div class="layout">
+<section>
+  {% if cards %}<div class="grid">
+  {% for c in cards %}{% set m = c.market %}
+  <a class="card market-card" href="{{ url_for('views.market', mid=m.id) }}">
+    <div class="mc-top">{{ badge(m) }}<span class="muted small">{{ KIND_LABELS[m.kind] }}</span></div>
+    <h3>{{ m.title }}</h3>
+    {% if m.status == 'resolved' %}<p class="resolved">✔ {{ m.winner().label }}</p>
+    {% elif m.status == 'void' %}<p class="muted">Cancelled — everyone refunded</p>
+    {% elif c.yes is not none %}
+      <div class="yesno-mini"><div class="yes" style="width:{{ c.yes*100 }}%">Yes {{ c.yes|pct }}</div><div class="no">{{ (1-c.yes)|pct }}</div></div>
+    {% else %}{% for o, p in c.top %}
+      <div class="bar"><span style="width:{{ p*100 }}%"></span><b>{{ o.label }}</b><i>{{ p|pct }}</i></div>
+    {% endfor %}{% endif %}
+    <div class="mc-foot muted small"><span>{{ c.volume|money }} vol</span>{% if m.closes_at and m.status == 'open' %}<span>closes {{ when(m.closes_at) }}</span>{% endif %}</div>
+  </a>{% endfor %}</div>
+  {% else %}
+  <div class="empty card"><h2>No markets here yet</h2><p class="muted">Be the first to start one: anything the group might disagree on.</p>
+    {% if current_user.is_authenticated %}<a class="btn primary" href="{{ url_for('views.new_market') }}">Create a market</a>{% else %}<a class="btn primary" href="{{ url_for('auth.login') }}">Log in to create one</a>{% endif %}</div>
+  {% endif %}
+</section>
+<aside>
+  <div class="card"><h3>Top traders</h3>
+    <ol class="board">{% for u, v in board %}<li><span class="rank">{{ loop.index }}</span>{{ avatar(u, 26) }}<a href="{{ url_for('views.profile', uid=u.id) }}">{{ u.display_name }}</a><span class="val">{{ v|money }}</span></li>{% endfor %}</ol></div>
+  <div class="card"><h3>Recent bets</h3>
+    {% for t in feed %}<p class="feed">{{ avatar(t.user, 22) }}<span><b>{{ t.user.display_name }}</b> bet {{ t.dollars|money }} on <a href="{{ url_for('views.market', mid=t.market_id) }}">{{ t.outcome.label }}</a></span></p>
+    {% else %}<p class="muted small">No bets yet.</p>{% endfor %}</div>
+</aside>
+</div>
 {% endblock %}

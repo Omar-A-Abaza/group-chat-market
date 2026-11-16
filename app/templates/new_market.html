@@ -1,0 +1,42 @@
+{% extends "base.html" %}{% block title %}New market · {{ group_name }}{% endblock %}{% block content %}
+<div class="page-head"><h1>Create a market</h1></div>
+<form method="post" class="card form" id="new-market">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <input type="hidden" name="tz_offset" id="tz_offset" value="0">
+  <label>Question <input name="title" maxlength="200" required value="{{ form.get('title', '') }}" placeholder="Will we finish the group project on time?"></label>
+  <label>Details (optional) <textarea name="description" rows="2" maxlength="2000" placeholder="How will this be decided?">{{ form.get('description', '') }}</textarea></label>
+
+  <fieldset class="kinds">
+    <legend>Type</legend>
+    {% set cur = form.get('kind', 'yes_no') %}
+    {% for key, label, hint in [('yes_no','Yes / No','Two outcomes'),('multiple_choice','Multiple choice','You list the options'),('date_windows','Date windows','When will it happen?')] %}
+    <label class="kind-card"><input type="radio" name="kind" value="{{ key }}" {{ 'checked' if cur == key }}><span><b>{{ label }}</b><small>{{ hint }}</small></span></label>
+    {% endfor %}
+  </fieldset>
+
+  <div data-kind="yes_no">
+    <label>Starting chance of Yes (optional, 1-99%) <input name="yes_prob" type="number" min="1" max="99" step="1" value="{{ form.get('yes_prob', '') }}" placeholder="50"></label>
+  </div>
+  <div data-kind="multiple_choice" hidden>
+    <label>Options, one per line <span class="hint">Add "| 30" after an option to set its starting percent (give all or none).</span>
+      <textarea name="options" rows="5" placeholder="Option A&#10;Option B&#10;Option C">{{ form.get('options', '') }}</textarea></label>
+  </div>
+  <div data-kind="date_windows" hidden>
+    <div class="row2">
+      <label>First year <input name="start_year" type="number" value="{{ form.get('start_year', year) }}" min="2000" max="2200"></label>
+      <label>Years covered <input name="years" type="number" value="{{ form.get('years', 3) }}" min="1" max="10"></label>
+    </div>
+    <p class="hint">Creates "Before {{ year }}", one option per quarter, and a final "or later / never". Quarters that pass are eliminated automatically.</p>
+  </div>
+
+  <label>Betting closes (optional) <input name="closes_at" type="datetime-local" value="{{ form.get('closes_at', '') }}"><span class="hint">After this, no more trades. You (or an admin) then resolve it.</span></label>
+  <label>Is this about someone? <select name="about_user">
+    <option value="">No one</option>
+    {% for u in users %}<option value="{{ u.id }}" {{ 'selected' if form.get('about_user') == u.id|string }}>{{ u.display_name }}</option>{% endfor %}
+  </select><span class="hint">That person can watch but can't bet on it.</span></label>
+  <details><summary>Advanced</summary>
+    <label>Liquidity <input name="b" type="number" step="any" min="10" max="5000" value="{{ form.get('b', config.DEFAULT_B|int) }}"><span class="hint">Higher = odds move less per dollar.</span></label>
+  </details>
+  <button class="btn primary block">Create market</button>
+</form>
+{% endblock %}

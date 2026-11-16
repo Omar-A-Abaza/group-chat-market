@@ -1,0 +1,3 @@
+{% macro avatar(u, size=32) %}<span class="avatar" style="--h:{{ u.hue }};--s:{{ size }}px" title="{{ u.display_name }}">{{ u.initials }}</span>{% endmacro %}
+{% macro badge(m) %}<span class="badge st-{{ m.status }}">{{ STATUS_LABELS[m.status] }}</span>{% endmacro %}
+{% macro when(dt, prefix='') %}{% if dt %}<time data-utc="{{ dt|utc }}">{{ prefix }}{{ dt.strftime('%b %d, %H:%M') }} UTC</time>{% endif %}{% endmacro %}

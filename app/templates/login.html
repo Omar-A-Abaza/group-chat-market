@@ -1,8 +1,9 @@
-{% extends "base.html" %}{% block content %}
-<h1>Log in</h1>
-<form method="post" class="card narrow">
+{% extends "base.html" %}{% block title %}Log in · {{ group_name }}{% endblock %}{% block content %}
+<form method="post" class="card form narrow">
+  <h1>Log in</h1>
   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-  <label>Username <input name="username" autocapitalize="none" autofocus required></label>
-  <label>Password <input name="password" type="password" required></label>
-  <button>Log in</button>
+  <label>Username <input name="username" autocapitalize="none" autocomplete="username" autofocus required></label>
+  <label>Password <input name="password" type="password" autocomplete="current-password" required></label>
+  <button class="btn primary block">Log in</button>
+  <p class="muted small">No account? Ask whoever runs this group for an invite link.</p>
 </form>{% endblock %}
