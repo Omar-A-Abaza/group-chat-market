@@ -1,6 +1,7 @@
 import os
+import time
 
-from flask import Flask, render_template
+from flask import Flask, redirect, render_template, request, url_for
 from flask_login import LoginManager
 from flask_wtf.csrf import CSRFProtect
 
@@ -12,12 +13,9 @@ login_manager = LoginManager()
 login_manager.login_view = "auth.login"
 csrf = CSRFProtect()
 
-DEFAULT_WINDOWS = ["Before 2027", "2027 Q1", "2027 Q2", "2027 Q3", "2027 Q4",
-                   "2028 Q1", "2028 Q2", "2028 Q3", "2028 Q4", "2029 or later / never"]
-
 
 def create_app(test_config=None):
-    app = Flask(__name__, instance_relative_config=False)
+    app = Flask(__name__)
     app.config.from_object(Config)
     if test_config:
         app.config.update(test_config)
@@ -39,55 +37,66 @@ def create_app(test_config=None):
     app.register_blueprint(admin.bp)
     cli.register(app)
 
+    @app.before_request
+    def first_run_redirect():
+        """With no users yet, everything leads to the one-time setup page."""
+        if request.endpoint in (None, "static", "auth.setup"):
+            return None
+        if User.query.first() is None:
+            return redirect(url_for("auth.setup"))
+
+    @app.context_processor
+    def inject_globals():
+        return {"group_name": app.config["GROUP_NAME"]}
+
+    from .models import KIND_LABELS, STATUS_LABELS
+    app.jinja_env.globals.update(KIND_LABELS=KIND_LABELS, STATUS_LABELS=STATUS_LABELS)
+
     @app.template_filter("money")
     def money(x):
         return f"${x:,.2f}"
 
     @app.template_filter("pct")
     def pct(x):
-        return f"{x * 100:.1f}%"
+        return f"{x * 100:.0f}%" if x >= 0.995 or x <= 0.005 else f"{x * 100:.1f}%"
+
+    @app.template_filter("cents")
+    def cents(x):
+        return f"{x * 100:.0f}¢"
+
+    @app.template_filter("utc")
+    def utc(dt):
+        """ISO string the browser turns into local time (see static/app.js)."""
+        return dt.strftime("%Y-%m-%dT%H:%M:%SZ") if dt else ""
 
     @app.errorhandler(403)
     def forbidden(e):
-        return render_template("error.html", msg="Not allowed."), 403
+        return render_template("error.html", msg="You're not allowed to do that."), 403
 
     @app.errorhandler(404)
     def notfound(e):
-        return render_template("error.html", msg="Not found."), 404
+        return render_template("error.html", msg="Page not found."), 404
 
     with app.app_context():
         db.create_all()
-        _migrate()
     return app
 
 
-def _migrate():
-    """Add Outcome.ends_on to databases created before it existed, and backfill it from labels."""
-    from sqlalchemy import text
-    from .models import Outcome, parse_window_end
-    cols = [r[1] for r in db.session.execute(text("PRAGMA table_info(outcome)"))]
-    if "ends_on" not in cols:
-        db.session.execute(text("ALTER TABLE outcome ADD COLUMN ends_on DATE"))
-        db.session.commit()
-        for o in Outcome.query.all():
-            o.ends_on = parse_window_end(o.label)
-        db.session.commit()
-
-
-def start_scheduler(app, interval_seconds=3600):
-    """Background thread: eliminate expired windows now and then every hour."""
+def start_scheduler(app, interval_seconds=300):
+    """Background thread: close markets past their close time and expire date windows."""
     import threading
-    import time
 
     def loop():
         while True:
             try:
                 with app.app_context():
                     from . import trading
-                    for q, label in trading.auto_eliminate_expired():
-                        app.logger.info("Auto-eliminated %s in %s", label, q)
+                    for title in trading.close_expired_markets():
+                        app.logger.info("Closed market: %s", title)
+                    for title, label in trading.auto_eliminate_expired():
+                        app.logger.info("Auto-eliminated %s in %s", label, title)
             except Exception:
-                app.logger.exception("window check failed")
+                app.logger.exception("scheduled check failed")
             time.sleep(interval_seconds)
 
-    threading.Thread(target=loop, name="window-checker", daemon=True).start()
+    threading.Thread(target=loop, name="market-checker", daemon=True).start()

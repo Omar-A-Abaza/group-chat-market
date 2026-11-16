@@ -1,11 +1,12 @@
+import secrets
+from datetime import timedelta
 from functools import wraps
 
 from flask import Blueprint, abort, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 
-from . import market_math as mm
-from . import trading
-from .models import Market, Outcome, PriceSnapshot, Trade, User, db
+from .auth import MIN_PASSWORD
+from .models import Invite, Market, User, db, now
 
 bp = Blueprint("admin", __name__, url_prefix="/admin")
 
@@ -23,92 +24,51 @@ def admin_required(f):
 @bp.route("/")
 @admin_required
 def index():
-    return render_template("admin_index.html", markets=Market.query.order_by(Market.id).all(),
-                           users=User.query.order_by(User.id).all())
+    invites = Invite.query.order_by(Invite.id.desc()).all()
+    return render_template("admin.html", invites=invites, users=User.query.order_by(User.id).all(),
+                           markets=Market.query.order_by(Market.id.desc()).all(),
+                           now=now(), links={i.id: url_for("auth.join", token=i.token, _external=True)
+                                             for i in invites})
 
 
-@bp.route("/market/<int:mid>")
+@bp.route("/invites", methods=["POST"])
 @admin_required
-def market(mid):
-    m = Market.query.get_or_404(mid)
-    has_trades = Trade.query.filter_by(market_id=m.id).count() > 0
-    return render_template("admin_market.html", m=m, pm=m.price_map(), has_trades=has_trades)
-
-
-@bp.route("/market/<int:mid>/configure", methods=["POST"])
-@admin_required
-def configure(mid):
-    """Replace windows / starting odds / b. Only allowed before any trade."""
-    m = Market.query.get_or_404(mid)
-    if Trade.query.filter_by(market_id=m.id).count() or m.status != "open":
-        flash("Can't reconfigure after trading has started.", "error")
-        return redirect(url_for("admin.market", mid=mid))
+def create_invite():
     try:
-        b = float(request.form["b"])
-        if b <= 0:
-            raise ValueError("b must be positive")
-        labels, probs = [], []
-        for line in request.form["windows"].splitlines():
-            if not line.strip():
-                continue
-            label, _, p = line.partition("|")
-            labels.append(label.strip())
-            probs.append(float(p) if p.strip() else None)
-        if len(labels) < 2:
-            raise ValueError("Need at least 2 windows")
-        if all(p is None for p in probs):
-            qs = [0.0] * len(labels)
-        elif any(p is None for p in probs):
-            raise ValueError("Give a % for every window or for none")
-        else:
-            qs = mm.initial_q_for_probs(probs, b)
-    except (ValueError, KeyError) as e:
-        flash(f"Invalid: {e}", "error")
-        return redirect(url_for("admin.market", mid=mid))
-    with trading.LOCK:
-        for o in list(m.outcomes):
-            db.session.delete(o)
-        db.session.flush()
-        m.b = b
-        for i, (l, q) in enumerate(zip(labels, qs)):
-            db.session.add(Outcome(market_id=m.id, label=l, sort_order=i, q=q))
-        db.session.flush()
-        db.session.add(PriceSnapshot(market_id=m.id, prices=__import__("json").dumps(m.price_map())))
-        db.session.commit()
-    flash("Market reconfigured.", "ok")
-    return redirect(url_for("admin.market", mid=mid))
+        days = int(request.form.get("days") or 0)
+        uses = int(request.form.get("max_uses") or 0)
+    except ValueError:
+        flash("Days and uses must be numbers.", "error")
+        return redirect(url_for("admin.index"))
+    if days < 0 or uses < 0:
+        flash("Days and uses can't be negative.", "error")
+        return redirect(url_for("admin.index"))
+    inv = Invite(token=secrets.token_urlsafe(12), created_by=current_user.id,
+                 expires_at=(now() + timedelta(days=days)) if days else None,
+                 max_uses=uses or None)
+    db.session.add(inv)
+    db.session.commit()
+    flash("Invite link created.", "ok")
+    return redirect(url_for("admin.index"))
 
 
-@bp.route("/outcome/<int:oid>/eliminate", methods=["POST"])
+@bp.route("/invites/<int:iid>/revoke", methods=["POST"])
 @admin_required
-def eliminate(oid):
-    o = Outcome.query.get_or_404(oid)
-    try:
-        trading.eliminate_outcome(oid)
-        flash("Window eliminated.", "ok")
-    except trading.TradeError as e:
-        flash(str(e), "error")
-    return redirect(url_for("admin.market", mid=o.market_id))
-
-
-@bp.route("/market/<int:mid>/resolve", methods=["POST"])
-@admin_required
-def resolve(mid):
-    try:
-        trading.resolve(mid, int(request.form["outcome"]))
-        flash("Market resolved and paid out.", "ok")
-    except (trading.TradeError, ValueError, KeyError) as e:
-        flash(str(e) or "Invalid input.", "error")
-    return redirect(url_for("admin.market", mid=mid))
+def revoke_invite(iid):
+    inv = db.get_or_404(Invite, iid)
+    inv.revoked = True
+    db.session.commit()
+    flash("Invite revoked.", "ok")
+    return redirect(url_for("admin.index"))
 
 
 @bp.route("/user/<int:uid>/password", methods=["POST"])
 @admin_required
 def reset_password(uid):
-    u = User.query.get_or_404(uid)
+    u = db.get_or_404(User, uid)
     new = request.form.get("password", "")
-    if len(new) < 6:
-        flash("Password must be at least 6 characters.", "error")
+    if len(new) < MIN_PASSWORD:
+        flash(f"Password must be at least {MIN_PASSWORD} characters.", "error")
     else:
         u.set_password(new)
         db.session.commit()
