@@ -1,5 +1,7 @@
 # Group Chat Market
 
+[![tests](https://github.com/Omar-A-Abaza/group-chat-market/actions/workflows/ci.yml/badge.svg)](https://github.com/Omar-A-Abaza/group-chat-market/actions/workflows/ci.yml)
+
 A fake-money prediction market for your friend group. Everyone starts with play money, anyone can
 create a market about anything ("Will the trip happen?", "Who wins the fantasy league?", "When will
 Sam finish his thesis?"), and the group bets on the outcome. Prices move with every trade, so the odds
@@ -108,5 +110,5 @@ pip install -r requirements-dev.txt && pytest
 
 ## Ideas for later
 
-Push or chat notifications when a market you hold resolves, limit orders, market categories/tags, achievements,
-seasons with archived leaderboards, and a read-only public API.
+See [docs/ROADMAP.md](docs/ROADMAP.md): notifications, portfolio chart, achievements, limit orders, tags,
+seasons, audit log, public API and more.
