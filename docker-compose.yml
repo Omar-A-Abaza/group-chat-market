@@ -1,0 +1,14 @@
+services:
+  market:
+    build: .
+    ports:
+      - "8000:8000"
+    env_file: .env          # SECRET_KEY, GROUP_NAME, START_CASH, ...
+    environment:
+      DATABASE_PATH: /data/market.db
+    volumes:
+      - market-data:/data
+    restart: unless-stopped
+
+volumes:
+  market-data:

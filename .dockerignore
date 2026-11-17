@@ -1,0 +1,7 @@
+.git
+.env
+instance/
+*.db
+__pycache__/
+.pytest_cache/
+docs/screenshots/

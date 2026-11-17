@@ -1,5 +1,7 @@
-# Example accounts (fake names). Copy to accounts.local.toml (git-ignored) and put in the real friends.
-# One market "When will <display_name> get married?" is created per user.
+# Optional bulk signup:  flask --app wsgi seed accounts.local.toml
+# Copy this file to accounts.local.toml (git-ignored) and list your group.
+# Random passwords are written to passwords.local.txt (also git-ignored).
+# Most groups don't need this: use the first-run setup page and invite links instead.
 [[users]]
 username = "alice"
 display_name = "Alice"
